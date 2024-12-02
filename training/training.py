@@ -9,7 +9,7 @@ import os
 
 
 # Training function
-def train_model(model, train_loader, val_loader, criterion, optimizer, num_epochs=10):
+def train_model(model, train_loader, val_loader, criterion, optimizer, save_path: str, num_epochs=10):
     for epoch in range(num_epochs):
         model.train()
         running_loss = 0.0
@@ -70,8 +70,9 @@ if __name__ == '__main__':
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     # Set up paths for training and validation datasets
-    train_dir = 'path_to_train_data'
-    val_dir = 'path_to_validation_data'
+    train_dir = './dataset/train'
+    val_dir = './dataset/val'
+    save_path = './models'
 
     # Data Preprocessing and Augmentation
     transform_train = transforms.Compose([
@@ -114,4 +115,4 @@ if __name__ == '__main__':
     optimizer = optim.Adam(model.classifier.parameters(), lr=1e-4)
 
     # Train the model
-    train_model(model, train_loader, val_loader, criterion, optimizer, num_epochs=10)
+    train_model(model, train_loader, val_loader, criterion, optimizer, save_path, num_epochs=10)
