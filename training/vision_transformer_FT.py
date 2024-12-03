@@ -2,11 +2,10 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
-from torchvision import datasets, models, transforms
-from torch.utils.data import DataLoader
+from torchvision import datasets, transforms
+from transformers import ViTForImageClassification, ViTFeatureExtractor
 from sklearn.metrics import accuracy_score
 import os
-
 
 # Training function
 def train_model(model, train_loader, val_loader, criterion, optimizer, save_path: str, num_epochs=10):
@@ -22,7 +21,7 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, save_path
             optimizer.zero_grad()
 
             # Forward pass
-            outputs = model(inputs)
+            outputs = model(pixel_values=inputs).logits
             loss = criterion(outputs.squeeze(), labels.float())
 
             # Backward pass and optimization
@@ -46,7 +45,7 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, save_path
         with torch.no_grad():
             for inputs, labels in val_loader:
                 inputs, labels = inputs.to(device), labels.to(device)
-                outputs = model(inputs)
+                outputs = model(pixel_values=inputs).logits
                 loss = criterion(outputs.squeeze(), labels.float())
                 val_loss += loss.item()
                 preds = torch.sigmoid(outputs).squeeze() > 0.5
@@ -61,7 +60,8 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, save_path
         print(f"  Validation Loss: {val_loss:.4f}, Validation Accuracy: {val_accuracy:.4f}")
 
     # Save the entire model
-    torch.save(model, "./models/vgg19_fine_tuned.pth")
+    os.makedirs(save_path, exist_ok=True)
+    model.save_pretrained(save_path)
     print(f"The model has been saved to: {save_path}")
 
 if __name__ == '__main__':
@@ -72,7 +72,7 @@ if __name__ == '__main__':
     # Set up paths for training and validation datasets
     train_dir = './dataset/train'
     val_dir = './dataset/val'
-    save_path = './models'
+    save_path = './models/vit_fire_detection'
 
     # Data Preprocessing and Augmentation
     transform_train = transforms.Compose([
@@ -98,21 +98,16 @@ if __name__ == '__main__':
     train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_data, batch_size=batch_size, shuffle=False)
 
-    # Load pre-trained VGG19 model
-    model = models.vgg19(pretrained=True)
-
-    # Freeze all layers except the last fully connected layer
-    for param in model.parameters():
-        param.requires_grad = False
-
-    # Modify the classifier for binary classification
-    model.classifier[6] = nn.Linear(4096, 1)
-    # 4096 is the output of the second-to-last layer, change to 1 output (binary classification)
+    # Load pre-trained Vision Transformer (ViT)
+    model = ViTForImageClassification.from_pretrained(
+        'google/vit-base-patch16-224-in21k',
+        num_labels=1,  # Binary classification
+    )
     model = model.to(device)
 
     # Define loss function and optimizer
     criterion = nn.BCEWithLogitsLoss()  # Binary Cross-Entropy loss with logits
-    optimizer = optim.Adam(model.classifier.parameters(), lr=1e-4)
+    optimizer = optim.Adam(model.parameters(), lr=1e-4)
 
     # Train the model
     train_model(model, train_loader, val_loader, criterion, optimizer, save_path, num_epochs=10)
