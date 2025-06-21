@@ -39,7 +39,7 @@ This project aims to automatically detect and classify fire from images (or vide
    ```bash
    git clone https://github.com/DavidTovmasyan/FireClassification.git
    cd FireClassification
-````
+   ```
 
 2. (Optional) Create a virtual environment:
 
